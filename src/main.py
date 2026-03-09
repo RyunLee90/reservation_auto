@@ -516,25 +516,39 @@ def _process_reservation_detail(
             print(f"경고: 이름 번역 실패(계속 진행): {e}")
         time.sleep(0.7)
 
-        # ── 3) Nationality ──
+        # ── 3) Nationality: 항상 기존 값 지우고 'kor' 입력 → South Korea 선택 ──
         try:
             nat_input = wait.until(
                 EC.presence_of_element_located(
                     (By.ID, "IR01_0101_V50_frmE02_cmp_nationality_desc"),
                 )
             )
-            current_nat = (nat_input.get_attribute("value") or "").strip().lower()
-            if "korea" in current_nat:
-                print(f"Nationality 이미 설정됨({nat_input.get_attribute('value')}), 건너뜁니다.")
-            else:
-                _js_click(nat_input)
-                time.sleep(0.2)
-                nat_input.send_keys("kor")
-                time.sleep(0.7)
+            # 1) 기존 값 JS 로 초기화
+            _js_clear(nat_input)
+            time.sleep(0.3)
+            # 2) 실제 클릭으로 포커스 이동 (JS click 은 send_keys 포커스가 안 잡힘)
+            try:
+                nat_input.click()
+            except Exception:
+                driver.execute_script("arguments[0].focus();", nat_input)
+            time.sleep(0.3)
+            # 3) 'kor' 입력
+            nat_input.send_keys("kor")
+            time.sleep(1.0)  # 자동완성 드롭다운 뜰 시간
+            # 4) 자동완성 목록에서 'South Korea' 직접 클릭 시도, 실패 시 키보드로 선택
+            try:
+                dropdown_item = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//li[contains(., 'South Korea')]"),
+                    )
+                )
+                dropdown_item.click()
+                print("Nationality 드롭다운에서 'South Korea' 직접 클릭 완료.")
+            except Exception:
                 nat_input.send_keys(Keys.ARROW_DOWN)
-                time.sleep(0.2)
+                time.sleep(0.3)
                 nat_input.send_keys(Keys.ENTER)
-                print("Nationality 에 'South Korea' 선택 완료.")
+                print("Nationality 키보드로 'South Korea' 선택 완료.")
         except Exception as e:
             print(f"경고: Nationality 자동 설정 건너뜁니다: {e}")
         time.sleep(0.7)
