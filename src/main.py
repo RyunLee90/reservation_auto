@@ -645,6 +645,10 @@ def _process_reservation_detail(
         print("예약 상세 화면 자동 처리 완료.")
     except Exception as e:
         print(f"경고: 예약 상세 화면 자동 처리 중 오류: {e}")
+        # 브라우저 세션이 끊어진 경우에는 더 이상 진행해도 의미가 없으므로 그대로 예외를 올려서 run() 전체를 종료한다.
+        if "invalid session id" in str(e).lower():
+            print("치명적: 브라우저 세션이 끊어져 자동화를 중단합니다.")
+            raise
 
 
 def _save_and_close(driver: webdriver.Chrome, wait: WebDriverWait):
@@ -705,6 +709,9 @@ def _save_and_close(driver: webdriver.Chrome, wait: WebDriverWait):
         time.sleep(1.5)
     except Exception as e:
         print(f"경고: 저장/닫기 처리 중 오류: {e!r}")
+        if "invalid session id" in str(e).lower():
+            print("치명적: 브라우저 세션이 끊어져 자동화를 중단합니다.")
+            raise
 
 
 def _go_to_reservation_list_page(driver: webdriver.Chrome, wait: WebDriverWait):
