@@ -1,17 +1,16 @@
-# 히카리글로벌: Remark 에 'TotalGuestName' 이 포함된 행 또는
-# Remark 가 완전히 비어 있는 행을 재가공 대상으로 본다.
+# 히카리글로벌:
+# Remark 에 아래 SKIP 단어가 없으면 무조건 처리 대상으로 본다.
+# (이미 작업된 행에는 OPEN / RO 가 들어가 있으므로 자동으로 걸러짐)
 # 상세 Remark 입력 형식: 금액 OPEN / RO
 
-REMARK_KEYWORDS = [
-    "TotalGuestName",
-]
+# 키워드 매칭 / 공란 매칭은 사용하지 않음 → MATCH_ALL_REMAINING 으로 대체
+REMARK_KEYWORDS = []
+MATCH_EMPTY_REMARK = False
 
-# 히카리 전용: Remark 컬럼이 완전히 공란인 행도 매칭 대상으로 포함
-MATCH_EMPTY_REMARK = True
-
-# 히카리 전용: 이미 작업 완료된 Remark 를 가진 행은 건너뜀
-# Remark 에 아래 단어 중 하나라도 있으면 처리 대상 제외
-# (OPEN / RO 패턴을 겨냥해서 OPEN, 오픈, RO 를 모두 본다)
+# SKIP: 이 단어 중 하나라도 Remark 에 있으면 절대 들어가지 않음
 SKIP_REMARK_KEYWORDS = ["OPEN", "오픈", "open", "RO"]
+
+# 히카리 전용: SKIP 에 걸리지 않은 행은 모두 처리 대상
+MATCH_ALL_REMAINING = True
 
 REMARK_FORMAT = "{total} OPEN / RO"

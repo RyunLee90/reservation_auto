@@ -293,9 +293,15 @@ def _open_first_reservation(
     # 계정별 키워드: 핸들러 있으면 해당 키워드, 없으면 기존처럼 B2B
     handler = get_handler(account_name) if account_name else None
     match_empty_remark = bool(getattr(handler, "MATCH_EMPTY_REMARK", False)) if handler else False
-    if handler and getattr(handler, "REMARK_KEYWORDS", None):
-        keywords_normalized = [normalize_for_remark(k) for k in handler.REMARK_KEYWORDS]
-        no_match_msg = f"'{handler.REMARK_KEYWORDS}' 가 포함된 Remark 를 가진 예약 행을 찾지 못했습니다."
+    match_all_remaining = bool(getattr(handler, "MATCH_ALL_REMAINING", False)) if handler else False
+    remark_keywords = getattr(handler, "REMARK_KEYWORDS", None) if handler else None
+    if match_all_remaining:
+        # SKIP 조건 외에는 모두 처리 대상 (키워드 매칭 불필요)
+        keywords_normalized = []
+        no_match_msg = f"Account '{account_name}' 처리할 예약 행을 찾지 못했습니다."
+    elif handler and remark_keywords:
+        keywords_normalized = [normalize_for_remark(k) for k in remark_keywords]
+        no_match_msg = f"'{remark_keywords}' 가 포함된 Remark 를 가진 예약 행을 찾지 못했습니다."
     else:
         keywords_normalized = [normalize_for_remark("B2B")]
         no_match_msg = "'B2B' 가 포함된 Remark 를 가진 예약 행을 찾지 못했습니다."
@@ -336,16 +342,19 @@ def _open_first_reservation(
                 continue
 
             matched_text = ""
-            # 키워드 매칭: Remark 셀에서만 확인
-            remark_normalized = normalize_for_remark(remark_txt)
-            for kw_norm in keywords_normalized:
-                if kw_norm and kw_norm in remark_normalized:
-                    matched_text = remark_txt
-                    break
-
-            # 히카리글로벌 전용: Remark 가 완전히 비어 있는 행도 대상
-            if not matched_text and match_empty_remark and not remark_txt:
-                matched_text = "(빈 Remark)"
+            if match_all_remaining:
+                # SKIP 에 걸리지 않았으면 Remark 내용과 무관하게 대상
+                matched_text = remark_txt if remark_txt else "(빈 Remark)"
+            else:
+                # 키워드 매칭: Remark 셀에서만 확인
+                remark_normalized = normalize_for_remark(remark_txt)
+                for kw_norm in keywords_normalized:
+                    if kw_norm and kw_norm in remark_normalized:
+                        matched_text = remark_txt
+                        break
+                # 공란 매칭 (MATCH_EMPTY_REMARK True 인 계정)
+                if not matched_text and match_empty_remark and not remark_txt:
+                    matched_text = "(빈 Remark)"
 
             if not matched_text:
                 continue
