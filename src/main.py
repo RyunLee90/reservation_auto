@@ -156,13 +156,21 @@ def _set_account_filter(driver: webdriver.Chrome, wait: WebDriverWait, name: str
 
 
 def _click_find(driver: webdriver.Chrome, wait: WebDriverWait):
-    """Find 버튼 클릭 (매 실행마다)."""
-    try:
-        btn = wait.until(EC.element_to_be_clickable((By.ID, "comm_btn_find")))
-        btn.click()
-        print("Find 버튼 클릭 완료")
-    except Exception:
-        print("경고: Find 버튼을 찾지 못했습니다.")
+    """Find 버튼 클릭 (매 실행마다). Close 직후 DOM 갱신 지연 시 재시도."""
+    for attempt in range(2):
+        try:
+            btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "comm_btn_find")),
+            )
+            btn.click()
+            print("Find 버튼 클릭 완료")
+            return
+        except Exception:
+            if attempt == 0:
+                time.sleep(1.5)
+                _enter_iframe(driver)
+            else:
+                print("경고: Find 버튼을 찾지 못했습니다.")
 
 
 def _handle_cert_popup(driver: webdriver.Chrome, wait: WebDriverWait):
@@ -274,11 +282,13 @@ def _open_first_reservation(
     driver: webdriver.Chrome,
     wait: WebDriverWait,
     account_name: str | None = None,
+    skip_rsvn_no: str | None = None,
 ):
     """
     Reservation List 그리드에서
     계정별 핸들러(handlers)의 REMARK_KEYWORDS 에 맞는 행을 찾아 더블클릭.
-    account_name 이 없으면 히카리글로벌과 동일하게 'B2B' 로만 찾음.
+    skip_rsvn_no 가 있으면 해당 Rsvn No 행은 건너뜀 (방금 처리한 예약 재진입 방지).
+    반환: (열었으면 True, rsvn_no) / (안 열었으면 False, None)
     """
     # 계정별 키워드: 핸들러 있으면 해당 키워드, 없으면 기존처럼 B2B
     handler = get_handler(account_name) if account_name else None
@@ -297,36 +307,45 @@ def _open_first_reservation(
         time.sleep(0.3)
         rows = driver.find_elements(By.CSS_SELECTOR, "tr[role='row']") or driver.find_elements(By.CSS_SELECTOR, "tr")
         print(f"디버그: 그리드에서 감지한 행 개수 = {len(rows)}")
+
+        # Remark 컬럼 인덱스 동적 탐색 (없으면 마지막 컬럼으로 폴백)
+        remark_col_idx = _get_remark_col_index(driver)
+
         for row_idx, row in enumerate(rows):
             cells = row.find_elements(By.CSS_SELECTOR, "td")
             if not cells:
                 continue
-            matched_text = ""
-            for c in cells:
-                txt_raw = (c.text or "").strip()
-                if not txt_raw and c.get_attribute("innerText"):
-                    txt_raw = (c.get_attribute("innerText") or "").strip()
-                normalized = normalize_for_remark(txt_raw)
-                for kw_norm in keywords_normalized:
-                    if kw_norm and kw_norm in normalized:
-                        matched_text = txt_raw or (c.text or "")
-                        break
-                if matched_text:
-                    break
-            # 히카리글로벌 전용: Remark 컬럼이 완전히 공란인 행도 대상에 포함
-            if not matched_text and match_empty_remark:
+            rsvn_no = (cells[2].text or "").strip() if len(cells) >= 3 else ""
+            if skip_rsvn_no and rsvn_no == skip_rsvn_no:
+                continue  # 방금 처리한 예약은 건너뜀
+
+            # Remark 셀만 추출 (헤더 기반 인덱스, 없으면 마지막 셀)
+            if remark_col_idx is not None and remark_col_idx < len(cells):
+                remark_cell = cells[remark_col_idx]
+            else:
                 remark_cell = cells[-1]
-                remark_txt = (remark_cell.text or "").strip()
-                if not remark_txt and remark_cell.get_attribute("innerText"):
-                    remark_txt = (remark_cell.get_attribute("innerText") or "").strip()
-                if not remark_txt:
-                    matched_text = "(빈 Remark)"
+
+            remark_txt = (remark_cell.text or "").strip()
+            if not remark_txt:
+                remark_txt = (remark_cell.get_attribute("innerText") or "").strip()
+
+            matched_text = ""
+            # 키워드 매칭: Remark 셀에서만 확인
+            remark_normalized = normalize_for_remark(remark_txt)
+            for kw_norm in keywords_normalized:
+                if kw_norm and kw_norm in remark_normalized:
+                    matched_text = remark_txt
+                    break
+
+            # 히카리글로벌 전용: Remark 가 완전히 비어 있는 행도 대상
+            if not matched_text and match_empty_remark and not remark_txt:
+                matched_text = "(빈 Remark)"
+
             if not matched_text:
                 continue
             ActionChains(driver).double_click(row).perform()
-            rsvn_no = (cells[2].text or "").strip() if len(cells) >= 3 else ""
             print(f"재가공 대상 예약 행 클릭 완료 (Rsvn No: {rsvn_no}, Remark: '{matched_text}')")
-            return True
+            return True, rsvn_no
         print(f"알림: {no_match_msg}")
         for row_idx, row in enumerate(rows):
             cells = row.find_elements(By.CSS_SELECTOR, "td")
@@ -339,10 +358,10 @@ def _open_first_reservation(
                     best = t
             if best:
                 print(f"  디버그 행{row_idx + 1}: '{best[:80]}{'...' if len(best) > 80 else ''}' | normalized 일부: {normalize_for_remark(best)[:60]}")
-        return False
+        return False, None
     except Exception as e:
         print(f"경고: 예약 행 클릭 중 오류: {e}")
-        return False
+        return False, None
 
 
 def _translate_name_to_korean(name_en: str) -> str:
@@ -624,11 +643,9 @@ def _process_reservation_detail(
 
 def _save_and_close(driver: webdriver.Chrome, wait: WebDriverWait):
     """
-    예약 상세 화면 저장.
-    Save → OK 팝업 클릭.
-    Save+OK 후 FIT Reservation 은 자동으로 Reservation List 로 복귀하므로
-    Close 버튼은 따로 누르지 않는다.
-    (Close 를 누르면 Reservation List 자체가 닫혀버리는 문제가 있음)
+    예약 상세 화면 저장 후 FIT 상세만 닫기.
+    Save → OK 팝업 → (iframe 복귀 후) 상세창 Close 클릭 → Reservation List 로 복귀.
+    Close 를 눌러야 Find 버튼이 다시 보이므로 반드시 수행.
     """
     try:
         # 1) Save (현재 iframe 컨텍스트 안에서)
@@ -639,8 +656,7 @@ def _save_and_close(driver: webdriver.Chrome, wait: WebDriverWait):
         print("Save 버튼 클릭 완료.")
         time.sleep(0.7)
 
-        # 2) OK 팝업
-        # 현재 컨텍스트에서 먼저 시도 → 없으면 default_content 레벨에서 재시도
+        # 2) OK 팝업 (메인/iframe 어디든 있을 수 있음)
         ok_btn = None
         try:
             ok_btn = WebDriverWait(driver, 5).until(
@@ -648,24 +664,39 @@ def _save_and_close(driver: webdriver.Chrome, wait: WebDriverWait):
             )
         except Exception:
             pass
-
         if ok_btn is None:
             try:
                 driver.switch_to.default_content()
             except Exception:
                 pass
-            ok_btn = wait.until(
+            ok_btn = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.NAME, "btn_msgBox_ok")),
             )
-
         try:
             ok_btn.click()
         except Exception:
             driver.execute_script("arguments[0].click();", ok_btn)
         print("메시지 박스 OK 버튼 클릭 완료.")
-        # FIT Reservation 이 Reservation List 로 자동 복귀할 시간
-        time.sleep(2)
+        time.sleep(1.0)
 
+        # 3) iframe 복귀 후 상세창 Close 클릭 (FIT 만 닫고 List 는 유지)
+        try:
+            _enter_iframe(driver)
+            time.sleep(0.8)
+            all_close = driver.find_elements(By.ID, "comm_btn_close")
+            if all_close:
+                # 상세창 Close 는 보통 나중에 그려진(마지막) 버튼
+                close_btn = all_close[-1]
+                try:
+                    close_btn.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", close_btn)
+                print("FIT 상세 Close 버튼 클릭 완료.")
+            else:
+                print("경고: comm_btn_close 를 찾지 못해 Close 생략.")
+        except Exception as e_close:
+            print(f"경고: Close 클릭 중 오류(무시): {e_close!r}")
+        time.sleep(1.5)
     except Exception as e:
         print(f"경고: 저장/닫기 처리 중 오류: {e!r}")
 
@@ -747,21 +778,24 @@ def _process_b2b_cycle(
     if do_cert:
         _click_cert(driver, wait)
 
+    last_rsvn_no = None  # 방금 처리한 예약 번호 → 다음 탐색에서 제외
     while True:
-        opened = _open_first_reservation(driver, wait, account_name=account_name)
+        opened, rsvn_no = _open_first_reservation(
+            driver, wait, account_name=account_name, skip_rsvn_no=last_rsvn_no
+        )
         if not opened:
             break
+        last_rsvn_no = rsvn_no
         time.sleep(2)  # 상세 화면 로딩 시간
 
         _process_reservation_detail(driver, wait, account_name=account_name)
         _save_and_close(driver, wait)
 
-        # _save_and_close 에서 iframe 재진입 후 Close 를 눌렀으므로,
-        # 여기서는 다시 default_content → iframe 순으로 진입해서 Find 를 눌러준다.
+        # List 로 복귀 후 Find 로 그리드 갱신, 갱신 대기 후 다음 행 탐색
         time.sleep(1)
         _enter_iframe(driver)
         _click_find(driver, wait)
-        time.sleep(1)
+        time.sleep(2.5)  # Find 후 그리드가 서버에서 갱신될 시간 확보
 
     label = f"Account '{account_name}' " if account_name else ""
     print(f"이번 회차 {label}B2B 예약 자동 처리를 모두 완료했습니다.")
