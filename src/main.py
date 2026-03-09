@@ -329,6 +329,12 @@ def _open_first_reservation(
             if not remark_txt:
                 remark_txt = (remark_cell.get_attribute("innerText") or "").strip()
 
+            # 히카리글로벌 전용: 이미 작업 완료 표시(OPEN/오픈/open)가 있으면 스킵
+            skip_keywords = getattr(handler, "SKIP_REMARK_KEYWORDS", []) if handler else []
+            if skip_keywords and any(sk.lower() in remark_txt.lower() for sk in skip_keywords):
+                print(f"  스킵: 이미 처리된 Remark (Rsvn No: {rsvn_no}, Remark: '{remark_txt[:40]}')")
+                continue
+
             matched_text = ""
             # 키워드 매칭: Remark 셀에서만 확인
             remark_normalized = normalize_for_remark(remark_txt)

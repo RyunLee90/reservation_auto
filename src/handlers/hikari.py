@@ -9,4 +9,8 @@ REMARK_KEYWORDS = [
 # 히카리 전용: Remark 컬럼이 완전히 공란인 행도 매칭 대상으로 포함
 MATCH_EMPTY_REMARK = True
 
+# 히카리 전용: 이미 작업 완료된 Remark 를 가진 행은 건너뜀
+# Remark 에 아래 단어 중 하나라도 있으면 처리 대상 제외
+SKIP_REMARK_KEYWORDS = ["OPEN", "오픈", "open"]
+
 REMARK_FORMAT = "{total} OPEN / RO"
