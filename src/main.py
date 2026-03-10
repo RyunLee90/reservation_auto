@@ -113,13 +113,17 @@ def _clear_arrival_dates(driver: webdriver.Chrome, wait: WebDriverWait):
 
 def _set_rsvn_dates_today(driver: webdriver.Chrome, wait: WebDriverWait):
     """
-    Rsvn Date From/To 에 오늘 날짜를 동일하게 입력.
-    - 프로그램이 연도(26년)는 디폴트로 잡고 있으므로 MMDd(예: 0303)만 입력.
-    - 지우지 않고 한 번에 정확히 입력 (쓰고 지우기 없음).
-    - id: frmS_rsvnDateF, frmS_rsvnDateT
+    Rsvn Date From = 어제, To = 오늘 으로 입력.
+    - 연도는 PMS 디폴트를 사용하므로 MMdd(예: 0310)만 입력.
+    - id: frmS_rsvnDateF (From=어제), frmS_rsvnDateT (To=오늘)
     """
-    mmdd = datetime.now().strftime("%m%d")  # 예: 0303
-    for element_id in ("frmS_rsvnDateF", "frmS_rsvnDateT"):
+    from datetime import timedelta
+    today = datetime.now()
+    yesterday = today - timedelta(days=1)
+    date_from = yesterday.strftime("%m%d")  # 예: 0310
+    date_to   = today.strftime("%m%d")      # 예: 0311
+
+    for element_id, mmdd in (("frmS_rsvnDateF", date_from), ("frmS_rsvnDateT", date_to)):
         try:
             el = wait.until(EC.element_to_be_clickable((By.ID, element_id)))
             el.click()
