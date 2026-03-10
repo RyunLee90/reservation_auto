@@ -347,8 +347,8 @@ def _open_first_reservation(
 
             matched_text = ""
             if match_all_remaining:
-                # SKIP 에 걸리지 않았으면 Remark 내용과 무관하게 대상
-                matched_text = remark_txt if remark_txt else "(빈 Remark)"
+                # SKIP 에만 걸러지고, Remark 내용(공란 포함)은 그대로 둔 채 대상 선정
+                matched_text = remark_txt or "[no remark]"
             else:
                 # 키워드 매칭: Remark 셀에서만 확인
                 remark_normalized = normalize_for_remark(remark_txt)
@@ -719,6 +719,10 @@ def _save_and_close(driver: webdriver.Chrome, wait: WebDriverWait):
                 print("경고: comm_btn_close 를 찾지 못해 Close 생략.")
         except Exception as e_close:
             print(f"경고: Close 클릭 중 오류(무시): {e_close!r}")
+            # 세션이 이미 끊어진 경우에는 바로 상위로 예외를 올려 전체 플로우를 중단
+            if "invalid session id" in str(e_close).lower():
+                print("치명적: Close 중 세션 종료 감지 → 자동화 중단.")
+                raise
         time.sleep(1.5)
     except Exception as e:
         print(f"경고: 저장/닫기 처리 중 오류: {e!r}")
