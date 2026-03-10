@@ -739,28 +739,17 @@ def _go_to_reservation_list_page(driver: webdriver.Chrome, wait: WebDriverWait):
     time.sleep(2)
 
     try:
-        listbox = wait.until(EC.visibility_of_element_located((By.ID, "w_search_listbox")))
+        # 자동완성 목록이 뜨면, 아래로 두 번 내려가서 Enter (사용자 요청 동작)
+        wait.until(EC.visibility_of_element_located((By.ID, "w_search_listbox")))
         time.sleep(0.5)
-        items = listbox.find_elements(By.CSS_SELECTOR, "li[role='option'], .k-item, li")
-        clicked = False
-        preferred = None
-        fallback = None
-        for item in items:
-            text_raw = item.text or ""
-            text = text_raw.lower().strip()
-            # 1순위: 'reservation list' 이면서 'group' 이 포함되지 않은 항목
-            if "reservation list" in text and "group" not in text:
-                preferred = item
-                break
-            # 2순위: 'reservation list' 가 들어간 항목 (기억만 해둠)
-            if "reservation list" in text and fallback is None:
-                fallback = item
-        target = preferred or fallback or (items[0] if items else None)
-        if target:
-            driver.execute_script("arguments[0].click();", target)
-            clicked = True
-            print(f"검색 자동완성에서 선택한 항목: '{(target.text or '').strip()}'")
+        search_input.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.2)
+        search_input.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.2)
+        search_input.send_keys(Keys.ENTER)
+        print("검색 자동완성에서 아래로 2번 이동 후 항목 선택 완료.")
     except Exception:
+        # 실패 시엔 한 번만 내려서 Enter 로 폴백
         search_input.send_keys(Keys.ARROW_DOWN)
         time.sleep(0.3)
         search_input.send_keys(Keys.ENTER)
