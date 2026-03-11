@@ -527,12 +527,12 @@ def _process_reservation_detail(
 
                 if not has_required:
                     print(
-                        f"알림: Inter Memo 에 필수 워딩 {memo_keywords} 중 어느 것도 없어 이 예약은 건너뜁니다."
+                        f"알림: Inter Memo 에 필수 워딩 {memo_keywords} 중 어느 것도 없음. 상관없이 나머지 자동 처리(이름/국적/전화/이메일/리마크) 계속 진행합니다."
                     )
-                    return
-                print(
-                    f"Inter Memo 에 필수 워딩 {memo_keywords} 중 하나 이상을 확인했습니다. 나머지 자동 처리 계속 진행합니다."
-                )
+                else:
+                    print(
+                        f"Inter Memo 에 필수 워딩 {memo_keywords} 중 하나 이상 확인됨. 나머지 자동 처리 계속 진행합니다."
+                    )
                 time.sleep(0.3)
             except Exception as e:
                 print(f"경고: Inter Memo 확인 중 오류(예약 건너뜁니다): {e}")
