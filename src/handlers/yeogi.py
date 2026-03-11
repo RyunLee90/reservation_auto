@@ -1,13 +1,11 @@
-# 여기어때: Remark 에 '판매가' 가 포함된 행만 대상
+# 여기어때: 스킵(CL/COMP/RO) 제외하면 전부 처리 대상 (히카리 OPEN 개념과 동일)
 # 상세 Remark 입력 형식: 금액 CL / RO
 
-REMARK_KEYWORDS = [
-    "판매가",
-]
+REMARK_KEYWORDS = []
+MATCH_EMPTY_REMARK = False
+MATCH_ALL_REMAINING = True
 
-# 여기어때 전용:
-# - Remark/행 전체에 CL 또는 COMP 가 이미 들어가 있으면 "처리 완료"로 보고 스킵
-# - 둘 다 없으면 히카리 OPEN 개념처럼 "처리 대상"으로 본다.
+# 행 전체에 아래 중 하나라도 있으면 스킵 (이미 처리된 행)
 SKIP_REMARK_KEYWORDS = ["CL", "COMP", "RO"]
 
 REMARK_FORMAT = "{total} CL / RO"

@@ -1,14 +1,10 @@
-# 야놀자: Remark 매칭 키워드
-# 이제는 '판매채널' 이 포함된 Remark 만 대상.
+# 야놀자: 스킵(CL/COMP/RO) 제외하면 전부 처리 대상 (히카리 OPEN 개념과 동일)
 
-REMARK_KEYWORDS = [
-    "판매채널",
-]
+REMARK_KEYWORDS = []
+MATCH_EMPTY_REMARK = False
+MATCH_ALL_REMAINING = True
 
-# 야놀자 전용:
-# - Remark/행 전체에 CL 또는 COMP 가 이미 들어가 있으면 "처리 완료"로 보고 스킵
-# - 둘 다 없으면 히카리 OPEN 개념처럼 "처리 대상"으로 본다.
+# 행 전체에 아래 중 하나라도 있으면 스킵 (이미 처리된 행)
 SKIP_REMARK_KEYWORDS = ["CL", "COMP", "RO"]
 
-# 야놀자도 여기어때와 동일하게 CL / RO 사용
 REMARK_FORMAT = "{total} CL / RO"
