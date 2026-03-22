@@ -1,8 +1,8 @@
-# reservation_auto — PMS FIT 예약 자동화
-# 설치: python -m pip install -r requirements.txt
-
 selenium>=4.15,<5
 python-dotenv>=1.0
 webdriver-manager>=4.0
 # 이름 번역 (main._translate_name_to_korean). stable 대신 rc 가 흔히 사용됨.
 googletrans==4.0.0rc1
+# GUI 패키징
+cx_Freeze>=8.0
+pyinstaller>=6.0
