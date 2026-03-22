@@ -175,8 +175,9 @@ class App(tk.Tk):
 
     # ── 중지 ───────────────────────────────────────────
     def _stop(self):
-        self.log("중지 요청 — 현재 예약 처리 완료 후 종료됩니다.")
-        self.status_var.set("중지 중...")
+        self.log("중지 요청 — 프로그램을 종료합니다.")
+        self.status_var.set("종료 중...")
+        os._exit(0)
         # main.py 의 _driver_alive 체크로 자연스럽게 종료됨
         # 강제 종료가 필요하면 아래 주석 해제
         # if self._thread and self._thread.is_alive():

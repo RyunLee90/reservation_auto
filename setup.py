@@ -27,6 +27,7 @@ build_options = {
     "packages": packages,
     "include_files": include_files,
     "excludes": [],
+    "build_exe": "dist",
 }
 
 setup(
